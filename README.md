@@ -28,12 +28,12 @@ A customizable countdown timer designed to push users into deep focus:
 - **Analytics Sync**: Automatically logs completed focus cycles to the database with category tags (e.g. Coding, Design, Planning).
 - **Audio Feedback**: Uses the browser's audio synthesizer to play completion tones.
 
-### 3. 🎧 DSP Synthesized Ambient Soundboard
-A highly technical soundboard utilizing the **Web Audio API** to generate high-fidelity ambient loops client-side, with zero network loading latency or CORS issues:
-- **Celestial Rain**: Synthesizes rain by generating a white noise buffer and feeding it through highpass and lowpass filters.
-- **Cosmic Waves**: Generates white noise and automates lowpass filter sweeps using a Low Frequency Oscillator (LFO) to simulate rolling ocean waves.
-- **Binaural Focus**: Plays detuned sine waves (100Hz Left, 104Hz Right) hard-panned to create a 4Hz Theta beat, inducing focus and flow.
-- **Mixer**: Adjust volume levels of individual sounds independently using slider nodes.
+### 3. 🎧 Ambient Soundboard (HTML5 Audio Loops)
+A custom ambient soundboard utilizing standard HTML5 Audio loop elements to play loopable ambient sounds, with zero network loading latency or CORS issues:
+- **Celestial Rain**: High-quality, loopable celestial rain backdrop.
+- **Cosmic Waves**: Soothing loop of crashing ocean waves.
+- **Binaural Focus**: Steady theta-wave synth drone to block out external noises.
+- **Mixer**: Adjust volume levels of individual sounds independently using built-in range sliders.
 
 ### 4. 📅 Habit Rituals Matrix
 A checklist designed to help developers establish daily rituals:
@@ -61,7 +61,7 @@ graph TD
         Auth[Auth Panel]
         Kanban[KanbanBoard]
         Timer[PomodoroTimer]
-        Sounds[AmbientSounds DSP]
+        Sounds[AmbientSounds]
         Habits[HabitTracker]
         Charts[Analytics Charts]
     end

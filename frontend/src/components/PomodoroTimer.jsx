@@ -63,23 +63,13 @@ const PomodoroTimer = ({ onSessionComplete }) => {
   const handleTimerComplete = () => {
     setIsRunning(false);
     
-    // Play alert sound using browser Synth API if possible, or HTML5 Audio
+    // Play alert sound using standard HTML5 Audio
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5 note
-      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.8);
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav');
+      audio.volume = 0.3;
+      audio.play().catch(e => console.log('Audio playback delayed:', e));
     } catch (e) {
-      console.log('Audio feedback could not be played automatically:', e);
+      console.log('Audio feedback could not be played:', e);
     }
 
     // Trigger fireworks confetti!

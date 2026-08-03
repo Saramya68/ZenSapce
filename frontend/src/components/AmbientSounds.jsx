@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, CloudRain, Waves, Radio, Activity } from 'lucide-react';
+import { Volume2, VolumeX, CloudRain, Waves, Radio } from 'lucide-react';
 import GlassCard from './GlassCard';
 
 const AmbientSounds = () => {
@@ -14,211 +14,40 @@ const AmbientSounds = () => {
     binaural: 0.3
   });
 
-  const audioCtxRef = useRef(null);
-  
-  // Audio Node references
-  const nodesRef = useRef({
-    rainSource: null,
-    rainGain: null,
-    wavesSource: null,
-    wavesGain: null,
-    binauralOsc1: null,
-    binauralOsc2: null,
-    binauralGain: null
+  // Reference to standard HTML5 Audio elements
+  const audioRefs = useRef({
+    rain: new Audio('https://assets.mixkit.co/active_storage/sfx/2433/2433-600.wav'),
+    waves: new Audio('https://assets.mixkit.co/active_storage/sfx/1188/1188-600.wav'),
+    binaural: new Audio('https://assets.mixkit.co/active_storage/sfx/2566/2566-600.wav')
   });
 
-  // Init Audio Context on first interaction
-  const initAudioContext = () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-  };
+  // Configure loops and cleanup on mount/unmount
+  useEffect(() => {
+    Object.values(audioRefs.current).forEach(audio => {
+      audio.loop = true;
+    });
 
-  // Helper to generate white noise buffer
-  const createNoiseBuffer = (ctx) => {
-    const bufferSize = 2 * ctx.sampleRate;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
-    }
-    return noiseBuffer;
-  };
+    return () => {
+      Object.values(audioRefs.current).forEach(audio => {
+        audio.pause();
+      });
+    };
+  }, []);
 
-  // Start Rain Synth
-  const startRain = (ctx) => {
-    const buffer = createNoiseBuffer(ctx);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-
-    // Filter to make it sound like rain (lowpass and highpass combo)
-    const lpFilter = ctx.createBiquadFilter();
-    lpFilter.type = 'lowpass';
-    lpFilter.frequency.value = 1200;
-
-    const hpFilter = ctx.createBiquadFilter();
-    hpFilter.type = 'highpass';
-    hpFilter.frequency.value = 200;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = volumes.rain;
-
-    source.connect(hpFilter);
-    hpFilter.connect(lpFilter);
-    lpFilter.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    source.start();
-
-    nodesRef.current.rainSource = source;
-    nodesRef.current.rainGain = gainNode;
-  };
-
-  // Stop Rain Synth
-  const stopRain = () => {
-    if (nodesRef.current.rainSource) {
-      try {
-        nodesRef.current.rainSource.stop();
-        nodesRef.current.rainSource.disconnect();
-      } catch (e) {}
-      nodesRef.current.rainSource = null;
-    }
-    nodesRef.current.rainGain = null;
-  };
-
-  // Start Waves Synth
-  const startWaves = (ctx) => {
-    const buffer = createNoiseBuffer(ctx);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-
-    // Filter waves (lowpass sweep)
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 350;
-
-    // Create LFO to simulate ocean wave swelling (slow sweep)
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.08; // 12.5 seconds per wave cycle
-    
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 200; // Sweep width +/- 200Hz
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = volumes.waves;
-
-    // Connect LFO modulation
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-
-    source.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    lfo.start();
-    source.start();
-
-    nodesRef.current.wavesSource = source;
-    nodesRef.current.wavesLfo = lfo;
-    nodesRef.current.wavesGain = gainNode;
-  };
-
-  // Stop Waves Synth
-  const stopWaves = () => {
-    if (nodesRef.current.wavesSource) {
-      try {
-        nodesRef.current.wavesSource.stop();
-        nodesRef.current.wavesSource.disconnect();
-        nodesRef.current.wavesLfo.stop();
-        nodesRef.current.wavesLfo.disconnect();
-      } catch (e) {}
-      nodesRef.current.wavesSource = null;
-      nodesRef.current.wavesLfo = null;
-    }
-    nodesRef.current.wavesGain = null;
-  };
-
-  // Start Binaural beats Focus hum (detuned Left/Right channels)
-  const startBinaural = (ctx) => {
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    
-    osc1.type = 'sine';
-    osc1.frequency.value = 100; // 100 Hz carrier frequency
-
-    osc2.type = 'sine';
-    osc2.frequency.value = 104; // 104 Hz for a 4 Hz (Theta) binaural beat difference
-
-    // Panners to direct waves to specific ears
-    const panner1 = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
-    const panner2 = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = volumes.binaural;
-
-    if (panner1 && panner2) {
-      panner1.pan.value = -1; // Left
-      panner2.pan.value = 1; // Right
-
-      osc1.connect(panner1);
-      panner1.connect(gainNode);
-
-      osc2.connect(panner2);
-      panner2.connect(gainNode);
-    } else {
-      // Fallback if panners are not supported
-      osc1.connect(gainNode);
-      osc2.connect(gainNode);
-    }
-
-    gainNode.connect(ctx.destination);
-
-    osc1.start();
-    osc2.start();
-
-    nodesRef.current.binauralOsc1 = osc1;
-    nodesRef.current.binauralOsc2 = osc2;
-    nodesRef.current.binauralGain = gainNode;
-  };
-
-  // Stop Binaural
-  const stopBinaural = () => {
-    if (nodesRef.current.binauralOsc1 && nodesRef.current.binauralOsc2) {
-      try {
-        nodesRef.current.binauralOsc1.stop();
-        nodesRef.current.binauralOsc2.stop();
-        nodesRef.current.binauralOsc1.disconnect();
-        nodesRef.current.binauralOsc2.disconnect();
-      } catch (e) {}
-      nodesRef.current.binauralOsc1 = null;
-      nodesRef.current.binauralOsc2 = null;
-    }
-    nodesRef.current.binauralGain = null;
-  };
-
-  // Handle toggling sounds
+  // Handle toggling sound files
   const handleToggle = (soundType) => {
-    initAudioContext();
-    const ctx = audioCtxRef.current;
+    const audio = audioRefs.current[soundType];
+    if (!audio) return;
 
     setIsPlaying(prev => {
-      const nextState = { ...prev, [soundType]: !prev[soundType] };
-      
-      // Execute the audio action
-      if (soundType === 'rain') {
-        nextState.rain ? startRain(ctx) : stopRain();
-      } else if (soundType === 'waves') {
-        nextState.waves ? startWaves(ctx) : stopWaves();
-      } else if (soundType === 'binaural') {
-        nextState.binaural ? startBinaural(ctx) : stopBinaural();
+      const nextState = !prev[soundType];
+      if (nextState) {
+        audio.volume = volumes[soundType];
+        audio.play().catch(e => console.log('Audio playback delayed:', e));
+      } else {
+        audio.pause();
       }
-
-      return nextState;
+      return { ...prev, [soundType]: nextState };
     });
   };
 
@@ -227,26 +56,11 @@ const AmbientSounds = () => {
     const vol = parseFloat(value);
     setVolumes(prev => ({ ...prev, [soundType]: vol }));
 
-    if (soundType === 'rain' && nodesRef.current.rainGain) {
-      nodesRef.current.rainGain.gain.setValueAtTime(vol, audioCtxRef.current.currentTime);
-    } else if (soundType === 'waves' && nodesRef.current.wavesGain) {
-      nodesRef.current.wavesGain.gain.setValueAtTime(vol, audioCtxRef.current.currentTime);
-    } else if (soundType === 'binaural' && nodesRef.current.binauralGain) {
-      nodesRef.current.binauralGain.gain.setValueAtTime(vol, audioCtxRef.current.currentTime);
+    const audio = audioRefs.current[soundType];
+    if (audio) {
+      audio.volume = vol;
     }
   };
-
-  // Clean up nodes on unmount
-  useEffect(() => {
-    return () => {
-      stopRain();
-      stopWaves();
-      stopBinaural();
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close();
-      }
-    };
-  }, []);
 
   const soundsList = [
     { id: 'rain', label: 'Celestial Rain', icon: <CloudRain size={18} color="var(--accent-purple)" />, color: 'var(--accent-purple)' },
@@ -264,7 +78,7 @@ const AmbientSounds = () => {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 650 }}>Ambient Sounds</h2>
         </div>
         
-        {/* Active Synth Waves Indicator */}
+        {/* Active Wave Animation Indicator */}
         {hasActiveSound ? (
           <div className="sound-waves">
             <span></span>
